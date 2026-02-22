@@ -1,4 +1,5 @@
 import type { DatabaseConnection } from '../../driver/database-connection.js'
+import type { Prepare } from '../../query-executor/query-executor.js'
 
 /**
  * Config for the PostgreSQL dialect.
@@ -59,6 +60,7 @@ export interface PostgresPoolClient {
     sql: string,
     parameters: ReadonlyArray<unknown>,
   ): Promise<PostgresQueryResult<R>>
+  query<R>(prepare: Prepare): Promise<PostgresQueryResult<R>>
   query<R>(cursor: PostgresCursor<R>): PostgresCursor<R>
   release(): void
 }

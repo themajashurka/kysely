@@ -2650,7 +2650,7 @@ class SelectQueryBuilderImpl<
     )
   }
 
-  async execute(): Promise<Simplify<O>[]> {
+  async execute(args?: { prepare?: boolean }): Promise<Simplify<O>[]> {
     const compiledQuery = this.compile()
 
     const result = await this.#props.executor.executeQuery<O>(compiledQuery)

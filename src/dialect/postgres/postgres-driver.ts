@@ -6,6 +6,7 @@ import type { Driver, TransactionSettings } from '../../driver/driver.js'
 import { parseSavepointCommand } from '../../parser/savepoint-parser.js'
 import { CompiledQuery } from '../../query-compiler/compiled-query.js'
 import type { QueryCompiler } from '../../query-compiler/query-compiler.js'
+import type { Prepare } from '../../query-executor/query-executor.js'
 import { isFunction, freeze } from '../../util/object-utils.js'
 import { createQueryId } from '../../util/query-id.js'
 import { extendStackTrace } from '../../util/stack-trace-utils.js'
@@ -14,6 +15,7 @@ import type {
   PostgresDialectConfig,
   PostgresPool,
   PostgresPoolClient,
+  PostgresQueryResult,
 } from './postgres-dialect-config.js'
 
 const PRIVATE_RELEASE_METHOD: unique symbol = Symbol()
@@ -152,12 +154,17 @@ class PostgresConnection implements DatabaseConnection {
     this.#options = options
   }
 
-  async executeQuery<O>(compiledQuery: CompiledQuery): Promise<QueryResult<O>> {
+  async executeQuery<O>(
+    compiledQuery: CompiledQuery,
+    prepare?: Prepare,
+  ): Promise<QueryResult<O>> {
     try {
-      const { command, rowCount, rows } = await this.#client.query<O>(
-        compiledQuery.sql,
-        [...compiledQuery.parameters],
-      )
+      const { command, rowCount, rows } =
+        !prepare || 'queryId' in prepare
+          ? await this.#client.query<O>(compiledQuery.sql, [
+              ...compiledQuery.parameters,
+            ])
+          : await this.#client.query<O>(prepare)
 
       return {
         numAffectedRows:

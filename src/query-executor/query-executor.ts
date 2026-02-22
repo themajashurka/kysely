@@ -6,6 +6,12 @@ import type { KyselyPlugin } from '../plugin/kysely-plugin.js'
 import type { QueryId } from '../util/query-id.js'
 import type { DialectAdapter } from '../dialect/dialect-adapter.js'
 
+export type Prepare = {
+  name: string
+  text: string
+  values: any[]
+}
+
 /**
  * This interface abstracts away the details of how to compile a query into SQL
  * and execute it. Instead of passing around all those details, {@link SelectQueryBuilder}
@@ -44,7 +50,10 @@ export interface QueryExecutor extends ConnectionProvider {
    * Executes a compiled query and runs the result through all plugins'
    * `transformResult` method.
    */
-  executeQuery<R>(compiledQuery: CompiledQuery<R>): Promise<QueryResult<R>>
+  executeQuery<R>(
+    compiledQuery: CompiledQuery<R>,
+    prepare?: Prepare,
+  ): Promise<QueryResult<R>>
 
   /**
    * Executes a compiled query and runs the result through all plugins'

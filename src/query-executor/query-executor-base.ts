@@ -9,7 +9,7 @@ import type { KyselyPlugin } from '../plugin/kysely-plugin.js'
 import { freeze } from '../util/object-utils.js'
 import type { QueryId } from '../util/query-id.js'
 import type { DialectAdapter } from '../dialect/dialect-adapter.js'
-import type { QueryExecutor } from './query-executor.js'
+import type { Prepare, QueryExecutor } from './query-executor.js'
 import { provideControlledConnection } from '../util/provide-controlled-connection.js'
 import { logOnce } from '../util/log-once.js'
 
@@ -60,9 +60,12 @@ export abstract class QueryExecutorBase implements QueryExecutor {
     consumer: (connection: DatabaseConnection) => Promise<T>,
   ): Promise<T>
 
-  async executeQuery<R>(compiledQuery: CompiledQuery): Promise<QueryResult<R>> {
+  async executeQuery<R>(
+    compiledQuery: CompiledQuery,
+    prepare: Prepare,
+  ): Promise<QueryResult<R>> {
     return await this.provideConnection(async (connection) => {
-      const result = await connection.executeQuery(compiledQuery)
+      const result = await connection.executeQuery(compiledQuery, prepare)
 
       if ('numUpdatedOrDeletedRows' in result) {
         logOnce(
