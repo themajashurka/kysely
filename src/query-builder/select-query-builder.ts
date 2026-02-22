@@ -2123,7 +2123,7 @@ export interface SelectQueryBuilder<DB, TB extends keyof DB, O>
    *
    * Also see the {@link executeTakeFirst} and {@link executeTakeFirstOrThrow} methods.
    */
-  execute(): Promise<Simplify<O>[]>
+  execute(args?: { prepare: boolean }): Promise<Simplify<O>[]>
 
   /**
    * Executes the query and returns the first result or undefined if
