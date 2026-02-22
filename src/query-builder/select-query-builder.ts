@@ -42,7 +42,10 @@ import {
 import { LimitNode } from '../operation-node/limit-node.js'
 import { OffsetNode } from '../operation-node/offset-node.js'
 import type { Compilable } from '../util/compilable.js'
-import type { QueryExecutor } from '../query-executor/query-executor.js'
+import type {
+  Prepare,
+  QueryExecutor,
+} from '../query-executor/query-executor.js'
 import type { QueryId } from '../util/query-id.js'
 import { asArray, freeze } from '../util/object-utils.js'
 import { type GroupByArg, parseGroupBy } from '../parser/group-by-parser.js'
@@ -83,6 +86,8 @@ import type { TopModifier } from '../operation-node/top-node.js'
 import { parseTop } from '../parser/top-parser.js'
 import type { JoinType } from '../operation-node/join-node.js'
 import type { OrderByInterface } from './order-by-interface.js'
+
+import { createHash } from 'crypto'
 
 export interface SelectQueryBuilder<DB, TB extends keyof DB, O>
   extends
@@ -2123,7 +2128,7 @@ export interface SelectQueryBuilder<DB, TB extends keyof DB, O>
    *
    * Also see the {@link executeTakeFirst} and {@link executeTakeFirstOrThrow} methods.
    */
-  execute(args?: { prepare: boolean }): Promise<Simplify<O>[]>
+  execute(args?: { prepare?: boolean }): Promise<Simplify<O>[]>
 
   /**
    * Executes the query and returns the first result or undefined if
@@ -2653,7 +2658,22 @@ class SelectQueryBuilderImpl<
   async execute(args?: { prepare?: boolean }): Promise<Simplify<O>[]> {
     const compiledQuery = this.compile()
 
-    const result = await this.#props.executor.executeQuery<O>(compiledQuery)
+    let prepare: Prepare | undefined
+    if (args?.prepare) {
+      prepare = {
+        name: createHash('md5')
+          .update(compiledQuery.sql)
+          .digest('hex')
+          .slice(0, 8),
+        text: compiledQuery.sql,
+        values: compiledQuery.parameters as any,
+      }
+    }
+
+    const result = await this.#props.executor.executeQuery<O>(
+      compiledQuery,
+      prepare,
+    )
 
     return result.rows
   }
