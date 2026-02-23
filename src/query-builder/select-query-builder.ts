@@ -88,6 +88,7 @@ import type { JoinType } from '../operation-node/join-node.js'
 import type { OrderByInterface } from './order-by-interface.js'
 
 import { createHash } from 'crypto'
+import { createPrepare } from '../util/prepare.js'
 
 export interface SelectQueryBuilder<DB, TB extends keyof DB, O>
   extends
@@ -2134,7 +2135,9 @@ export interface SelectQueryBuilder<DB, TB extends keyof DB, O>
    * Executes the query and returns the first result or undefined if
    * the query returned no result.
    */
-  executeTakeFirst(): Promise<SimplifySingleResult<O>>
+  executeTakeFirst(args?: {
+    prepare?: boolean
+  }): Promise<SimplifySingleResult<O>>
 
   /**
    * Executes the query and returns the first result or throws if
@@ -2145,6 +2148,7 @@ export interface SelectQueryBuilder<DB, TB extends keyof DB, O>
    * error.
    */
   executeTakeFirstOrThrow(
+    args?: { prepare?: boolean },
     errorConstructor?: NoResultErrorConstructor | ((node: QueryNode) => Error),
   ): Promise<Simplify<O>>
 
@@ -2657,18 +2661,7 @@ class SelectQueryBuilderImpl<
 
   async execute(args?: { prepare?: boolean }): Promise<Simplify<O>[]> {
     const compiledQuery = this.compile()
-
-    let prepare: Prepare | undefined
-    if (args?.prepare) {
-      prepare = {
-        name: createHash('md5')
-          .update(compiledQuery.sql)
-          .digest('hex')
-          .slice(0, 8),
-        text: compiledQuery.sql,
-        values: compiledQuery.parameters as any,
-      }
-    }
+    const prepare = createPrepare(compiledQuery, args)
 
     const result = await this.#props.executor.executeQuery<O>(
       compiledQuery,
@@ -2678,17 +2671,20 @@ class SelectQueryBuilderImpl<
     return result.rows
   }
 
-  async executeTakeFirst(): Promise<SimplifySingleResult<O>> {
-    const [result] = await this.execute()
+  async executeTakeFirst(args?: {
+    prepare?: boolean
+  }): Promise<SimplifySingleResult<O>> {
+    const [result] = await this.execute(args)
     return result as SimplifySingleResult<O>
   }
 
   async executeTakeFirstOrThrow(
+    args?: { prepare?: boolean },
     errorConstructor:
       | NoResultErrorConstructor
       | ((node: QueryNode) => Error) = NoResultError,
   ): Promise<Simplify<O>> {
-    const result = await this.executeTakeFirst()
+    const result = await this.executeTakeFirst(args)
 
     if (result === undefined) {
       const error = isNoResultErrorConstructor(errorConstructor)
